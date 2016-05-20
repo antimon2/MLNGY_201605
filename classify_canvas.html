@@ -1,0 +1,93 @@
+<style type="text/css">
+canvas { border: 1px solid black; }
+</style>
+<div id="board">
+<canvas id="myCanvas" width="112px" height="112px">Sorry, your browser doesn't support canvas technology.</canvas>
+<p>
+<button id="classify" onclick="classify()">Classify</button>
+<button id="clear" onclick="myClear()">Clear</button>
+</p><p>
+Result: <input type="text" id="result_output" size="5" value=""><br><textarea id="result_detail" cols="20" rows="10"></textarea>
+</p>
+</div>
+<script type="text/javascript">
+function getOffset(el) {
+	return el.getBoundingClientRect();
+}
+function init() {
+	var myCanvas = document.getElementById("myCanvas");
+	// var curColor = void 0;
+	if (myCanvas) {
+		var isDown = false;
+		var ctx = myCanvas.getContext("2d");
+		var canvasX, canvasY;
+		ctx.lineWidth = 8;
+		function onMouseDown(e) {
+			isDown = true;
+			ctx.beginPath();
+			var parentOffset = getOffset(myCanvas.parentNode); 
+			canvasX = e.pageX - parentOffset.left;
+			canvasY = e.pageY - parentOffset.top;
+			ctx.moveTo(canvasX, canvasY);
+		}
+		myCanvas.addEventListener("mousedown", onMouseDown, false);
+		function onMouseMove(e) {
+			if(isDown != false) {
+				var parentOffset = getOffset(myCanvas.parentNode); 
+				canvasX = e.pageX - parentOffset.left;
+				canvasY = e.pageY - parentOffset.top;
+				ctx.lineTo(canvasX, canvasY);
+				// ctx.strokeStyle = curColor;
+				ctx.stroke();
+			}
+		}
+		myCanvas.addEventListener("mousemove", onMouseMove, false);
+		function onMouseUp(e) {
+			isDown = false;
+			ctx.closePath();
+		}
+		myCanvas.addEventListener("mouseup", onMouseUp, false);
+	}
+}
+init();
+function indMax(a) {
+	var res = -1;
+	var val = Number.NEGATIVE_INFINITY;
+	for (var i = 0, l = a.length; i < l; i++) {
+		if (a[i] > val) {
+			val = a[i];
+			res = i;
+		}
+	}
+	return res;
+}
+function handle_output(out) {
+	console.log(out);
+	var arr = JSON.parse(JSON.parse(out.content.data["text/plain"]));
+	var result = indMax(arr);
+	var detail = arr.map(function (v, i) {return i + ': ' + v;});
+	document.getElementById("result_output").value = result;
+	document.getElementById("result_detail").value = detail.join("\n");
+}
+function classify() {
+	var kernel = IPython.notebook.kernel;
+	var myCanvas = document.getElementById("myCanvas");
+	var ctx = myCanvas.getContext("2d");
+	var data = [];
+	for (var y = 0; y < 28; ++y){
+		for (var x = 0; x < 28; ++x){
+			var imageData = ctx.getImageData(x * 4, y * 4, 4, 4);
+			var pixel = 0;
+			for (var i = 3; i < 64; i += 4) pixel += imageData.data[i];
+			data.push(pixel / 4080);	// 4080 = 255*16
+		}
+	}
+	document.getElementById("result_output").value = "";
+	console.log(data);
+	kernel.execute('classify(' + JSON.stringify(data) + ')',  { 'iopub': {'output': handle_output}}, {silent: false});
+}
+function myClear() {
+	var myCanvas = document.getElementById("myCanvas");
+	myCanvas.getContext("2d").clearRect(0, 0, myCanvas.width, myCanvas.height);
+}
+</script>
